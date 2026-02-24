@@ -1,0 +1,23 @@
+# Go
+tplm
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# VS Code
+.vscode/
+
+# Neovim
+.nvim/
+*.swp
+*.swo
+*~
+tags
+
+# Claude Code
+.claude/
