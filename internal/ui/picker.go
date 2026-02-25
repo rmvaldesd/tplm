@@ -215,39 +215,11 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if item.isSession {
 				// Toggle expand/collapse.
 				if item.expanded {
-					// Collapse: snap cursor back to session header if on a child window.
-					sessionIdx := m.cursor
-					delete(m.expanded, item.name)
-					// Find the session in m.sessions and update.
-					for i := range m.sessions {
-						if m.sessions[i].name == item.name {
-							m.sessions[i].expanded = false
-							break
-						}
-					}
-					m.rebuildDisplayItems()
-					// Clamp cursor to the session header position.
-					if m.cursor > sessionIdx {
-						m.cursor = sessionIdx
-					}
-					if m.cursor >= m.totalItems() && m.cursor > 0 {
-						m.cursor = m.totalItems() - 1
-					}
+					m.collapseSession(item)
 				} else {
-					// Expand: fetch windows and store.
-					wins, err := tmux.ListWindows(item.name)
-					if err != nil {
+					if err := m.expandSession(item); err != nil {
 						m.err = err
-						break
 					}
-					m.expanded[item.name] = wins
-					for i := range m.sessions {
-						if m.sessions[i].name == item.name {
-							m.sessions[i].expanded = true
-							break
-						}
-					}
-					m.rebuildDisplayItems()
 				}
 				break
 			}
@@ -266,6 +238,63 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			return m, func() tea.Msg { return switchMsg{name: proj.Name} }
+
+		case key.Matches(msg, keys.Right):
+			item := m.selectedItem()
+			if item == nil {
+				break
+			}
+
+			if item.isSession {
+				if item.expanded {
+					// Move cursor to first child window.
+					if m.cursor+1 < m.totalItems() && m.displayItems[m.cursor+1].isWindow {
+						m.cursor++
+					}
+				} else {
+					// Expand the session.
+					if err := m.expandSession(item); err != nil {
+						m.err = err
+					}
+				}
+				break
+			}
+
+			if item.isWindow {
+				// Switch to the window (same as Enter).
+				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				return m, func() tea.Msg { return switchMsg{name: target} }
+			}
+
+			// Project — open/switch (same as Enter).
+			proj := m.cfg.FindProject(item.name)
+			if proj == nil {
+				break
+			}
+			if tmux.SessionExists(proj.Name) {
+				return m, func() tea.Msg { return switchMsg{name: proj.Name} }
+			}
+			if err := m.createSession(proj); err != nil {
+				m.err = err
+				break
+			}
+			return m, func() tea.Msg { return switchMsg{name: proj.Name} }
+
+		case key.Matches(msg, keys.Left):
+			item := m.selectedItem()
+			if item == nil {
+				break
+			}
+
+			if item.isSession && item.expanded {
+				m.collapseSession(item)
+				break
+			}
+
+			if item.isWindow {
+				// Jump to parent session.
+				m.cursor = m.findParentSessionIndex()
+			}
 
 		case key.Matches(msg, keys.Kill):
 			item := m.selectedItem()
@@ -312,6 +341,52 @@ func (m PickerModel) updateRename(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.rename, cmd = m.rename.Update(msg)
 	return m, cmd
+}
+
+// expandSession expands a session to show its windows.
+func (m *PickerModel) expandSession(item *pickerItem) error {
+	wins, err := tmux.ListWindows(item.name)
+	if err != nil {
+		return err
+	}
+	m.expanded[item.name] = wins
+	for i := range m.sessions {
+		if m.sessions[i].name == item.name {
+			m.sessions[i].expanded = true
+			break
+		}
+	}
+	m.rebuildDisplayItems()
+	return nil
+}
+
+// collapseSession collapses a session, hiding its windows.
+func (m *PickerModel) collapseSession(item *pickerItem) {
+	sessionIdx := m.cursor
+	delete(m.expanded, item.name)
+	for i := range m.sessions {
+		if m.sessions[i].name == item.name {
+			m.sessions[i].expanded = false
+			break
+		}
+	}
+	m.rebuildDisplayItems()
+	if m.cursor > sessionIdx {
+		m.cursor = sessionIdx
+	}
+	if m.cursor >= m.totalItems() && m.cursor > 0 {
+		m.cursor = m.totalItems() - 1
+	}
+}
+
+// findParentSessionIndex scans backwards from the current cursor to find the parent session.
+func (m *PickerModel) findParentSessionIndex() int {
+	for i := m.cursor - 1; i >= 0; i-- {
+		if m.displayItems[i].isSession {
+			return i
+		}
+	}
+	return m.cursor
 }
 
 func (m *PickerModel) createSession(proj *config.Project) error {
@@ -409,7 +484,7 @@ func (m PickerModel) View() string {
 		b.WriteString(m.rename.View() + "\n")
 	default:
 		b.WriteString("\n")
-		b.WriteString(helpStyle.Render("↑↓ navigate  ⏎ expand/switch  d kill  r rename  q quit") + "\n")
+		b.WriteString(helpStyle.Render("hjkl navigate  ⏎ select  d kill  r rename  q quit") + "\n")
 	}
 
 	if m.err != nil {

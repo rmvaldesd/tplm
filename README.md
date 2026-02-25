@@ -47,7 +47,7 @@ Add this to your `~/.tmux.conf`:
 
 ```tmux
 # Open tplm picker in a floating popup
-bind-key C-p display-popup -E -w 80% -h 60% "tplm picker"
+bind-key l display-popup -E -w 80% -h 60% "tplm picker"
 ```
 
 Reload tmux config:
@@ -105,7 +105,7 @@ layouts:
 
 ### Picker (interactive)
 
-Press `prefix + C-p` inside tmux to open the floating picker:
+Press `prefix + l` inside tmux to open the floating picker:
 
 ```
 ┌───────────────────────────────────────┐
@@ -122,7 +122,7 @@ Press `prefix + C-p` inside tmux to open the floating picker:
 │  ● my-api      3 windows             │
 │  ● frontend    2 windows             │
 │                                       │
-│  ↑↓ navigate  ⏎ open/switch  q quit  │
+│  hjkl navigate  ⏎ select  q quit     │
 └───────────────────────────────────────┘
 ```
 
@@ -131,8 +131,12 @@ Press `prefix + C-p` inside tmux to open the floating picker:
 | Key | Context | Action |
 |---|---|---|
 | `j` / `k` / arrows | Anywhere | Navigate up/down |
-| `Enter` | On a project | Create session from layout (if needed) and switch to it |
-| `Enter` | On a session | Switch to it |
+| `l` / `Enter` | On a collapsed session | Expand to show windows |
+| `l` / `Enter` | On an expanded session | Move to first window / toggle collapse |
+| `h` | On an expanded session | Collapse windows |
+| `h` | On a window | Jump to parent session |
+| `Enter` | On a window | Switch to that window |
+| `Enter` | On a project | Create session (if needed) and switch |
 | `d` | On a session | Kill session (with `y/n` confirmation) |
 | `r` | On a session | Rename session inline |
 | `q` / `Esc` | Anywhere | Close picker |

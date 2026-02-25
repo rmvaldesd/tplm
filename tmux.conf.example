@@ -2,7 +2,7 @@
 # Add these keybindings to your ~/.tmux.conf
 
 # Open the tplm picker in a floating popup
-bind-key C-p display-popup -E -w 80% -h 60% "tplm picker"
+bind-key l display-popup -E -w 80% -h 60% "tplm picker"
 
 # Apply a project layout directly (no TUI)
 # bind-key C-o run-shell "tplm open my-api"
