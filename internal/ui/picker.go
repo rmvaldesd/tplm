@@ -310,7 +310,7 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, keys.Kill):
 			item := m.selectedItem()
-			if item != nil && item.isSession {
+			if item != nil && (item.isSession || item.isWindow) {
 				m.mode = modeConfirmKill
 			}
 
@@ -334,6 +334,15 @@ func (m PickerModel) updateConfirmKill(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item := m.selectedItem()
 			if item != nil && item.isSession {
 				if err := tmux.KillSession(item.name); err != nil {
+					m.err = err
+				}
+				m.refreshItems()
+				if m.cursor >= m.totalItems() && m.cursor > 0 {
+					m.cursor--
+				}
+			} else if item != nil && item.isWindow {
+				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				if err := tmux.KillWindow(target); err != nil {
 					m.err = err
 				}
 				m.refreshItems()
@@ -489,7 +498,11 @@ func (m PickerModel) View() string {
 		item := m.selectedItem()
 		if item != nil {
 			b.WriteString("\n")
-			b.WriteString(confirmStyle.Render(fmt.Sprintf("  Kill session %q? (y/n)", item.name)) + "\n")
+			kind := "session"
+			if item.isWindow {
+				kind = "window"
+			}
+			b.WriteString(confirmStyle.Render(fmt.Sprintf("  Kill %s %q? (y/n)", kind, item.name)) + "\n")
 		}
 	case modeRename:
 		b.WriteString("\n")

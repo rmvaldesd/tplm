@@ -27,6 +27,11 @@ func NewWindow(session, name string) error {
 	return RunSilent("new-window", "-t", session, "-n", name)
 }
 
+// KillWindow kills a specific window. Target format: "session:windowIndex".
+func KillWindow(target string) error {
+	return RunSilent("kill-window", "-t", target)
+}
+
 // RenameWindow renames the current window in a session.
 func RenameWindow(target, name string) error {
 	return RunSilent("rename-window", "-t", target, name)
