@@ -46,6 +46,41 @@ func ListSessions() ([]SessionInfo, error) {
 	return sessions, nil
 }
 
+// WindowInfo holds metadata about a tmux window.
+type WindowInfo struct {
+	Index  int
+	Name   string
+	Active bool
+}
+
+// ListWindows returns all windows for the given session.
+func ListWindows(session string) ([]WindowInfo, error) {
+	out, err := Run("list-windows", "-t", session, "-F", "#{window_index}\t#{window_name}\t#{window_active}")
+	if err != nil {
+		return nil, err
+	}
+
+	if out == "" {
+		return nil, nil
+	}
+
+	var windows []WindowInfo
+	for _, line := range strings.Split(out, "\n") {
+		parts := strings.SplitN(line, "\t", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		idx, _ := strconv.Atoi(parts[0])
+		active := parts[2] == "1"
+		windows = append(windows, WindowInfo{
+			Index:  idx,
+			Name:   parts[1],
+			Active: active,
+		})
+	}
+	return windows, nil
+}
+
 // SessionExists checks if a session with the given name exists.
 func SessionExists(name string) bool {
 	err := RunSilent("has-session", "-t", name)

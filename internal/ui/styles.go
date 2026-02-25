@@ -32,6 +32,10 @@ var (
 			Foreground(lipgloss.Color("42")).
 			SetString("●")
 
+	windowActiveIndicator = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("42")).
+				SetString("●")
+
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
 			PaddingLeft(1).

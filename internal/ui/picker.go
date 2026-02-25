@@ -19,27 +19,34 @@ const (
 	modeRename
 )
 
-// pickerItem represents one row in the picker — either a project or a session.
+// pickerItem represents one row in the picker — a project, session, or window.
 type pickerItem struct {
-	isSession bool
-	name      string
-	path      string // project path (projects only)
-	windows   int    // window count (sessions only)
-	attached  bool   // whether client is attached (sessions only)
+	isSession    bool
+	isWindow     bool
+	name         string
+	path         string // project path (projects only)
+	windows      int    // window count (sessions only)
+	attached     bool   // whether client is attached (sessions only)
+	expanded     bool   // whether session is expanded (sessions only)
+	sessionName  string // parent session name (windows only)
+	windowIndex  int    // tmux window index (windows only)
+	windowActive bool   // active window indicator (windows only)
 }
 
 // PickerModel is the Bubbletea model for the two-section picker.
 type PickerModel struct {
-	cfg       *config.Config
-	projects  []pickerItem
-	sessions  []pickerItem
-	cursor    int // index into the combined list (projects then sessions)
-	mode      mode
-	rename    RenameModel
-	err       error
-	quitting  bool
-	width     int
-	height    int
+	cfg          *config.Config
+	projects     []pickerItem
+	sessions     []pickerItem
+	displayItems []pickerItem // flattened list the cursor navigates
+	expanded     map[string][]tmux.WindowInfo
+	cursor       int // index into displayItems
+	mode         mode
+	rename       RenameModel
+	err          error
+	quitting     bool
+	width        int
+	height       int
 }
 
 // switchMsg tells the program to switch to a session and quit.
@@ -47,7 +54,10 @@ type switchMsg struct{ name string }
 
 // NewPicker creates a new picker model.
 func NewPicker(cfg *config.Config) PickerModel {
-	m := PickerModel{cfg: cfg}
+	m := PickerModel{
+		cfg:      cfg,
+		expanded: make(map[string][]tmux.WindowInfo),
+	}
 	m.refreshItems()
 	return m
 }
@@ -64,28 +74,64 @@ func (m *PickerModel) refreshItems() {
 	m.sessions = nil
 	sessions, _ := tmux.ListSessions()
 	for _, s := range sessions {
+		_, isExpanded := m.expanded[s.Name]
 		m.sessions = append(m.sessions, pickerItem{
 			isSession: true,
 			name:      s.Name,
 			windows:   s.Windows,
 			attached:  s.Attached,
+			expanded:  isExpanded,
 		})
+	}
+
+	// Prune stale expanded entries.
+	activeNames := make(map[string]bool)
+	for _, s := range m.sessions {
+		activeNames[s.name] = true
+	}
+	for name := range m.expanded {
+		if !activeNames[name] {
+			delete(m.expanded, name)
+		}
+	}
+
+	m.rebuildDisplayItems()
+}
+
+func (m *PickerModel) rebuildDisplayItems() {
+	m.displayItems = nil
+
+	for _, item := range m.projects {
+		m.displayItems = append(m.displayItems, item)
+	}
+
+	for _, item := range m.sessions {
+		m.displayItems = append(m.displayItems, item)
+		if item.expanded {
+			if wins, ok := m.expanded[item.name]; ok {
+				for _, w := range wins {
+					m.displayItems = append(m.displayItems, pickerItem{
+						isWindow:     true,
+						name:         w.Name,
+						sessionName:  item.name,
+						windowIndex:  w.Index,
+						windowActive: w.Active,
+					})
+				}
+			}
+		}
 	}
 }
 
 func (m PickerModel) totalItems() int {
-	return len(m.projects) + len(m.sessions)
+	return len(m.displayItems)
 }
 
 func (m PickerModel) selectedItem() *pickerItem {
-	total := m.totalItems()
-	if total == 0 || m.cursor < 0 || m.cursor >= total {
+	if len(m.displayItems) == 0 || m.cursor < 0 || m.cursor >= len(m.displayItems) {
 		return nil
 	}
-	if m.cursor < len(m.projects) {
-		return &m.projects[m.cursor]
-	}
-	return &m.sessions[m.cursor-len(m.projects)]
+	return &m.displayItems[m.cursor]
 }
 
 func (m PickerModel) Init() tea.Cmd {
@@ -108,6 +154,11 @@ func (m PickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case renameMsg:
+		// Transfer expanded state from old name to new name.
+		if wins, ok := m.expanded[msg.oldName]; ok {
+			delete(m.expanded, msg.oldName)
+			m.expanded[msg.newName] = wins
+		}
 		if err := tmux.RenameSession(msg.oldName, msg.newName); err != nil {
 			m.err = err
 		}
@@ -154,9 +205,53 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if item == nil {
 				break
 			}
-			if item.isSession {
-				return m, func() tea.Msg { return switchMsg{name: item.name} }
+
+			if item.isWindow {
+				// Switch to the specific window.
+				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				return m, func() tea.Msg { return switchMsg{name: target} }
 			}
+
+			if item.isSession {
+				// Toggle expand/collapse.
+				if item.expanded {
+					// Collapse: snap cursor back to session header if on a child window.
+					sessionIdx := m.cursor
+					delete(m.expanded, item.name)
+					// Find the session in m.sessions and update.
+					for i := range m.sessions {
+						if m.sessions[i].name == item.name {
+							m.sessions[i].expanded = false
+							break
+						}
+					}
+					m.rebuildDisplayItems()
+					// Clamp cursor to the session header position.
+					if m.cursor > sessionIdx {
+						m.cursor = sessionIdx
+					}
+					if m.cursor >= m.totalItems() && m.cursor > 0 {
+						m.cursor = m.totalItems() - 1
+					}
+				} else {
+					// Expand: fetch windows and store.
+					wins, err := tmux.ListWindows(item.name)
+					if err != nil {
+						m.err = err
+						break
+					}
+					m.expanded[item.name] = wins
+					for i := range m.sessions {
+						if m.sessions[i].name == item.name {
+							m.sessions[i].expanded = true
+							break
+						}
+					}
+					m.rebuildDisplayItems()
+				}
+				break
+			}
+
 			// It's a project — create session if needed, then switch.
 			proj := m.cfg.FindProject(item.name)
 			if proj == nil {
@@ -258,30 +353,46 @@ func (m PickerModel) View() string {
 	b.WriteString(title + strings.Repeat(" ", gap) + hint + "\n")
 	b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
 
-	// Projects section.
-	b.WriteString(headerStyle.Render("Projects") + "\n")
-	b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+	// Render using displayItems with section headers.
+	inSessions := false
+	projectsRendered := false
 
-	for i, item := range m.projects {
+	for i, item := range m.displayItems {
+		// Insert Projects header before first project.
+		if !projectsRendered && !item.isSession && !item.isWindow {
+			b.WriteString(headerStyle.Render("Projects") + "\n")
+			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+			projectsRendered = true
+		}
+
+		// Insert Sessions header at the boundary.
+		if !inSessions && (item.isSession || item.isWindow) {
+			if !projectsRendered {
+				b.WriteString(headerStyle.Render("Projects") + "\n")
+				b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+				b.WriteString(normalStyle.Render("(no projects configured)") + "\n")
+				projectsRendered = true
+			}
+			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+			b.WriteString(headerStyle.Render("Active Sessions") + "\n")
+			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+			inSessions = true
+		}
+
 		b.WriteString(m.renderItem(i, item, w))
 	}
 
-	if len(m.projects) == 0 {
+	// Handle empty states.
+	if !projectsRendered {
+		b.WriteString(headerStyle.Render("Projects") + "\n")
+		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
 		b.WriteString(normalStyle.Render("(no projects configured)") + "\n")
 	}
 
-	b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-
-	// Sessions section.
-	b.WriteString(headerStyle.Render("Active Sessions") + "\n")
-	b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-
-	for i, item := range m.sessions {
-		idx := len(m.projects) + i
-		b.WriteString(m.renderItem(idx, item, w))
-	}
-
-	if len(m.sessions) == 0 {
+	if !inSessions {
+		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+		b.WriteString(headerStyle.Render("Active Sessions") + "\n")
+		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
 		b.WriteString(normalStyle.Render("(no active sessions)") + "\n")
 	}
 
@@ -298,7 +409,7 @@ func (m PickerModel) View() string {
 		b.WriteString(m.rename.View() + "\n")
 	default:
 		b.WriteString("\n")
-		b.WriteString(helpStyle.Render("↑↓ navigate  ⏎ open/switch  q quit") + "\n")
+		b.WriteString(helpStyle.Render("↑↓ navigate  ⏎ expand/switch  d kill  r rename  q quit") + "\n")
 	}
 
 	if m.err != nil {
@@ -317,11 +428,27 @@ func (m PickerModel) renderItem(idx int, item pickerItem, width int) string {
 		style = selectedStyle
 	}
 
+	if item.isWindow {
+		indicator := "  "
+		if item.windowActive {
+			indicator = windowActiveIndicator.Render() + " "
+		}
+		name := style.Render(item.name)
+		return fmt.Sprintf("     %s%s%s\n", cursor, indicator, name)
+	}
+
 	if item.isSession {
+		chevron := "▶"
+		if item.expanded {
+			chevron = "▼"
+		}
 		indicator := activeIndicator.Render()
 		name := style.Render(item.name)
-		info := pathStyle.Render(fmt.Sprintf("%d windows", item.windows))
-		return fmt.Sprintf(" %s%s %s  %s\n", cursor, indicator, name, info)
+		info := ""
+		if !item.expanded {
+			info = "  " + pathStyle.Render(fmt.Sprintf("%d windows", item.windows))
+		}
+		return fmt.Sprintf(" %s%s %s %s%s\n", cursor, indicator, chevron, name, info)
 	}
 
 	name := style.Render(item.name)

@@ -183,6 +183,148 @@ Each layout defines a list of windows. Each window has a name and a list of pane
 | `split` | no | `horizontal` (side-by-side) or `vertical` (top/bottom) |
 | `size` | no | Percentage of the split, e.g. `"30%"` |
 
+## Layout Examples
+
+Layouts define how windows are split into panes. Each window starts with one pane; additional panes are created by splitting from it. `horizontal` splits side-by-side (left/right), `vertical` splits top/bottom.
+
+### Simple: single window, 2 panes side-by-side
+
+```
+ ┌──────────┬──────────┐
+ │          │          │
+ │  editor  │  terminal│
+ │  70%     │  30%     │
+ │          │          │
+ └──────────┴──────────┘
+```
+
+```yaml
+layouts:
+  simple:
+    windows:
+      - name: code
+        panes:
+          - size: "70%"
+          - split: horizontal
+            size: "30%"
+```
+
+### Two panes stacked vertically
+
+```
+ ┌─────────────────────┐
+ │       editor        │
+ │       70%           │
+ ├─────────────────────┤
+ │       terminal      │
+ │       30%           │
+ └─────────────────────┘
+```
+
+```yaml
+layouts:
+  stacked:
+    windows:
+      - name: code
+        panes:
+          - size: "70%"
+          - split: vertical
+            size: "30%"
+```
+
+### Two vertical panes, right side split horizontally
+
+A main editor on the left, with a terminal and a server log stacked on the right.
+
+```
+ ┌──────────┬──────────┐
+ │          │ terminal │
+ │          │ 50%      │
+ │  editor  ├──────────┤
+ │  60%     │ logs     │
+ │          │ 50%      │
+ └──────────┴──────────┘
+```
+
+```yaml
+layouts:
+  ide:
+    windows:
+      - name: workspace
+        panes:
+          - size: "60%"
+          - split: horizontal
+            size: "40%"
+          - split: vertical
+            size: "50%"
+```
+
+The first pane takes 60%. The second pane splits horizontally (side-by-side), taking 40% of the window width. The third pane splits vertically (top/bottom) from the second pane, each getting 50% of that column.
+
+### Complex: two vertical columns, each split into two rows with different sizes
+
+```
+ ┌──────────┬──────────┐
+ │  editor  │ server   │
+ │  70%     │ 60%      │
+ ├──────────┼──────────┤
+ │ terminal │ logs     │
+ │  30%     │ 40%      │
+ └──────────┴──────────┘
+```
+
+```yaml
+layouts:
+  quad:
+    windows:
+      - name: dev
+        panes:
+          - size: "50%"
+          - split: horizontal
+            size: "50%"
+          - split: vertical
+            size: "40%"
+```
+
+> **Note:** tmux splits are relative to the pane being split, not the whole window. The third pane (split vertical at 40%) splits the right column into 60%/40% top/bottom. To also split the left column, you would use a second window or run `on_start` commands.
+
+### Multi-window layout
+
+Combine multiple windows for a full project workspace:
+
+```yaml
+layouts:
+  fullstack:
+    windows:
+      - name: editor
+        panes:
+          - size: "70%"
+          - split: horizontal
+            size: "30%"
+      - name: servers
+        panes:
+          - size: "50%"
+          - split: horizontal
+            size: "50%"
+      - name: logs
+        panes:
+          - size: "100%"
+
+projects:
+  - name: my-app
+    path: ~/Projects/my-app
+    layout: fullstack
+    on_start:
+      - window: editor
+        command: nvim .
+      - window: servers
+        command: go run ./cmd/api
+      - window: logs
+        command: tail -f /var/log/app.log
+```
+
+This creates three windows: `editor` (70/30 split), `servers` (50/50 split), and `logs` (single pane), with startup commands in each.
+
 ## Session Creation Flow
 
 When you select a project that has no active session:
