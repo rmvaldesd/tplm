@@ -33,6 +33,7 @@ type Window struct {
 
 // Pane defines a single pane with optional split direction and size.
 type Pane struct {
-	Split string `yaml:"split,omitempty"` // "horizontal" or "vertical"
-	Size  string `yaml:"size,omitempty"`  // e.g. "70%"
+	Split   string `yaml:"split,omitempty"`   // "horizontal" or "vertical"
+	Size    string `yaml:"size,omitempty"`     // e.g. "70%"
+	Command string `yaml:"command,omitempty"` // optional command to run on pane startup
 }

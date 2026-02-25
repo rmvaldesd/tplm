@@ -27,6 +27,14 @@ func ApplyLayout(sessionName string, layout config.Layout, projectPath string) e
 			}
 		}
 
+		// Run command in the first pane if specified.
+		if len(win.Panes) > 0 && win.Panes[0].Command != "" {
+			paneTarget := fmt.Sprintf("%s.0", target)
+			if err := SendKeys(paneTarget, win.Panes[0].Command); err != nil {
+				return fmt.Errorf("running command in pane 0 of window %q: %w", win.Name, err)
+			}
+		}
+
 		// Split panes (skip the first pane — it exists by default).
 		for j := 1; j < len(win.Panes); j++ {
 			pane := win.Panes[j]
@@ -48,6 +56,14 @@ func ApplyLayout(sessionName string, layout config.Layout, projectPath string) e
 
 			if err := RunSilent(args...); err != nil {
 				return fmt.Errorf("splitting pane %d in window %q: %w", j, win.Name, err)
+			}
+
+			// Run command in this pane if specified.
+			if pane.Command != "" {
+				paneTarget := fmt.Sprintf("%s.%d", target, j)
+				if err := SendKeys(paneTarget, pane.Command); err != nil {
+					return fmt.Errorf("running command in pane %d of window %q: %w", j, win.Name, err)
+				}
 			}
 		}
 

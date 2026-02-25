@@ -7,7 +7,7 @@ A Go CLI tool for managing tmux sessions with predefined project layouts. Define
 - **YAML-based config** — define projects, layouts, and startup commands
 - **Floating picker** — Bubbletea TUI inside a `tmux display-popup` for browsing projects and active sessions
 - **Auto session creation** — select a project and tplm creates the session with the configured layout and runs startup commands
-- **Session management** — kill and rename sessions directly from the picker
+- **Session management** — kill and rename sessions, close individual windows directly from the picker
 - **Scriptable** — `tplm open <name>` for headless session creation
 
 ## Requirements
@@ -138,6 +138,7 @@ Press `prefix + l` inside tmux to open the floating picker:
 | `Enter` | On a window | Switch to that window |
 | `Enter` | On a project | Create session (if needed) and switch |
 | `d` | On a session | Kill session (with `y/n` confirmation) |
+| `d` | On a window | Kill window (with `y/n` confirmation) |
 | `r` | On a session | Rename session inline |
 | `q` / `Esc` | Anywhere | Close picker |
 
@@ -186,6 +187,7 @@ Each layout defines a list of windows. Each window has a name and a list of pane
 |---|---|---|
 | `split` | no | `horizontal` (side-by-side) or `vertical` (top/bottom) |
 | `size` | no | Percentage of the split, e.g. `"30%"` |
+| `command` | no | Command to run in this pane on session creation |
 
 ## Layout Examples
 
@@ -303,31 +305,28 @@ layouts:
       - name: editor
         panes:
           - size: "70%"
+            command: "nvim ."
           - split: horizontal
             size: "30%"
       - name: servers
         panes:
           - size: "50%"
+            command: "go run ./cmd/api"
           - split: horizontal
             size: "50%"
+            command: "npm run dev"
       - name: logs
         panes:
           - size: "100%"
+            command: "tail -f /var/log/app.log"
 
 projects:
   - name: my-app
     path: ~/Projects/my-app
     layout: fullstack
-    on_start:
-      - window: editor
-        command: nvim .
-      - window: servers
-        command: go run ./cmd/api
-      - window: logs
-        command: tail -f /var/log/app.log
 ```
 
-This creates three windows: `editor` (70/30 split), `servers` (50/50 split), and `logs` (single pane), with startup commands in each.
+This creates three windows: `editor` (70/30 split), `servers` (50/50 split), and `logs` (single pane). Each pane can optionally specify a `command` to run on creation — this is an alternative to using `on_start`, and gives you per-pane control rather than per-window.
 
 ## Session Creation Flow
 
