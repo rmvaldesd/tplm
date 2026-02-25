@@ -189,6 +189,160 @@ Each layout defines a list of windows. Each window has a name and a list of pane
 | `size` | no | Percentage of the split, e.g. `"30%"` |
 | `command` | no | Command to run in this pane on session creation |
 
+## Understanding the Layout Logic
+
+When tplm creates a window, it follows these rules in order:
+
+### Step 1: You always start with one full pane
+
+The first entry in `panes:` is the **default pane** — it already exists when the window is created. It fills the entire window. You only set its `size` (used later as a reference) and optionally a `command`.
+
+```
+ ┌─────────────────────┐
+ │                     │
+ │     pane 0 (100%)   │
+ │                     │
+ └─────────────────────┘
+```
+
+### Step 2: Each new pane splits the *currently active* pane
+
+Starting from the 2nd entry onward, each pane **splits the last pane that was created**. This is the key mental model:
+
+- `split: horizontal` — splits **left/right** (new pane appears to the right)
+- `split: vertical` — splits **top/bottom** (new pane appears below)
+
+### Step 3: Sizes are relative to the pane being split, not the whole window
+
+If pane 0 is 100% of the window and you split it horizontally at 40%, the new pane takes 40% of pane 0's space, leaving pane 0 with 60%.
+
+### Putting it together: common recipes
+
+#### Recipe A: Big pane on the LEFT, split right side
+
+You want this:
+```
+ ┌──────────┬──────────┐
+ │          │ terminal │
+ │          │          │
+ │  editor  ├──────────┤
+ │  (big)   │ logs     │
+ │          │          │
+ └──────────┴──────────┘
+```
+
+Think step-by-step:
+
+1. **Pane 0** — the editor, takes the full window
+2. **Pane 1** — split `horizontal` (left/right) at 40% → creates the right column, editor stays on the left
+3. **Pane 2** — split `vertical` (top/bottom) at 50% → splits *pane 1* (the right column) into two rows
+
+```yaml
+panes:
+  - size: "60%"              # pane 0: editor (left, big)
+  - split: horizontal        # pane 1: terminal (right-top)
+    size: "40%"
+  - split: vertical          # pane 2: logs (right-bottom, splits pane 1)
+    size: "50%"
+```
+
+#### Recipe B: Big pane on the RIGHT, split left side
+
+You want this:
+```
+ ┌──────────┬──────────┐
+ │ terminal │          │
+ │          │          │
+ ├──────────┤  editor  │
+ │ logs     │  (big)   │
+ │          │          │
+ └──────────┴──────────┘
+```
+
+The trick: you can't directly split "to the left". Instead, make the first split create the left column, then split *that* vertically, and the remaining big pane becomes the right side:
+
+1. **Pane 0** — starts full, will become the left column
+2. **Pane 1** — split `horizontal` at 60% → the new pane takes 60% on the right (this is your big editor)
+3. **Pane 2** — split `vertical` at 50% → but this splits *pane 1* (the right/big one), not pane 0
+
+The problem: pane 2 splits the last created pane (pane 1, the right side). To split pane 0 (the left side) instead, you need to reverse the order — make the big pane first and the small column second:
+
+1. **Pane 0** — the big editor, takes the full window
+2. **Pane 1** — split `horizontal` at 40% → right column appears
+3. Now you have: `[editor 60% | pane1 40%]` — but editor is on the left, not the right
+
+Since tmux always places the new split to the right (horizontal) or below (vertical), achieving "big pane on right" requires this approach:
+
+```yaml
+panes:
+  - size: "40%"              # pane 0: left column (will be split)
+  - split: horizontal        # pane 1: editor (right, big)
+    size: "60%"
+  - split: vertical          # pane 2: splits pane 1 (right)... not what we want
+    size: "50%"
+```
+
+This doesn't work as expected because pane 2 splits the *last created pane* (pane 1, the right side). **The workaround**: accept that the left column pane stays unsplit, and use `on_start` or `command` fields to run what you need in each pane. Or, flip your thinking and put the big pane on the left (Recipe A) — which is the natural flow for tmux splits.
+
+> **Rule of thumb**: tmux splits always go right or down. The simplest layouts have the big pane on the **left** or **top**, with the smaller split panes on the right or bottom side.
+
+#### Recipe C: Three panes stacked vertically
+
+```
+ ┌─────────────────────┐
+ │      editor         │
+ ├─────────────────────┤
+ │      terminal       │
+ ├─────────────────────┤
+ │      logs           │
+ └─────────────────────┘
+```
+
+Each new pane splits the previous one top/bottom:
+
+1. **Pane 0** — editor, full window
+2. **Pane 1** — split `vertical` at 50% → bottom half
+3. **Pane 2** — split `vertical` at 50% → splits pane 1's space in half
+
+```yaml
+panes:
+  - size: "50%"              # pane 0: editor (top)
+  - split: vertical          # pane 1: terminal (middle)
+    size: "50%"
+  - split: vertical          # pane 2: logs (bottom, splits pane 1)
+    size: "50%"
+```
+
+#### Recipe D: Three panes side-by-side
+
+```
+ ┌───────┬───────┬───────┐
+ │       │       │       │
+ │ left  │ center│ right │
+ │       │       │       │
+ └───────┴───────┴───────┘
+```
+
+```yaml
+panes:
+  - size: "33%"              # pane 0: left
+  - split: horizontal        # pane 1: center
+    size: "50%"
+  - split: horizontal        # pane 2: right (splits pane 1)
+    size: "50%"
+```
+
+### Quick reference
+
+| You want | First split | Second split |
+|---|---|---|
+| Big left + small right | `horizontal` (small %) | — |
+| Big top + small bottom | `vertical` (small %) | — |
+| Big left + 2 stacked right | `horizontal` | then `vertical` |
+| Big top + 2 side-by-side bottom | `vertical` | then `horizontal` |
+| 3 columns | `horizontal` | then `horizontal` |
+| 3 rows | `vertical` | then `vertical` |
+
 ## Layout Examples
 
 Layouts define how windows are split into panes. Each window starts with one pane; additional panes are created by splitting from it. `horizontal` splits side-by-side (left/right), `vertical` splits top/bottom.
