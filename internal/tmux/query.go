@@ -81,6 +81,15 @@ func ListWindows(session string) ([]WindowInfo, error) {
 	return windows, nil
 }
 
+// CurrentSession returns the name of the session the current client is attached to.
+func CurrentSession() (string, error) {
+	out, err := Run("display-message", "-p", "#{session_name}")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // SessionExists checks if a session with the given name exists.
 func SessionExists(name string) bool {
 	err := RunSilent("has-session", "-t", name)

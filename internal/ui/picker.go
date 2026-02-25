@@ -59,6 +59,18 @@ func NewPicker(cfg *config.Config) PickerModel {
 		expanded: make(map[string][]tmux.WindowInfo),
 	}
 	m.refreshItems()
+
+	// Auto-expand the current tmux session.
+	if current, err := tmux.CurrentSession(); err == nil && current != "" {
+		for i, item := range m.displayItems {
+			if item.isSession && item.name == current {
+				m.cursor = i
+				_ = m.expandSession(&item)
+				break
+			}
+		}
+	}
+
 	return m
 }
 
