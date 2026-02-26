@@ -90,6 +90,27 @@ func CurrentSession() (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// NeighborSession returns the name of an adjacent session to switch to
+// before killing the current one. It returns the next session in the list,
+// or the previous one if current is last. If current is the only session,
+// it returns "", false.
+func NeighborSession(current string) (string, bool) {
+	sessions, err := ListSessions()
+	if err != nil || len(sessions) <= 1 {
+		return "", false
+	}
+
+	for i, s := range sessions {
+		if s.Name == current {
+			if i+1 < len(sessions) {
+				return sessions[i+1].Name, true
+			}
+			return sessions[i-1].Name, true
+		}
+	}
+	return "", false
+}
+
 // SessionExists checks if a session with the given name exists.
 func SessionExists(name string) bool {
 	err := RunSilent("has-session", "-t", name)

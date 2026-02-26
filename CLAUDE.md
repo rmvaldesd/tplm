@@ -23,15 +23,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 tplm/
-├── main.go                      # Cobra entrypoint
-├── go.mod
 ├── cmd/
-│   ├── root.go                  # Root cobra command, --config flag, config loading
-│   ├── picker.go                # `tplm picker` — launches Bubbletea TUI
-│   ├── open.go                  # `tplm open <project>` — create session + switch (no TUI)
-│   ├── list.go                  # `tplm list` — print projects/sessions to stdout
-│   └── init.go                  # `tplm init` — generate example config.yaml
+│   └── tplm/
+│       └── main.go              # package main — imports internal/cli
 ├── internal/
+│   ├── cli/                     # Cobra commands
+│   │   ├── root.go              # Root cobra command, --config flag, config loading
+│   │   ├── picker.go            # `tplm picker` — launches Bubbletea TUI
+│   │   ├── open.go              # `tplm open <project>` — create session + switch (no TUI)
+│   │   ├── list.go              # `tplm list` — print projects/sessions to stdout
+│   │   └── init.go              # `tplm init` — generate example config.yaml
 │   ├── config/
 │   │   ├── config.go            # Parse YAML config, resolve ~ paths, example config
 │   │   └── types.go             # Config, Project, Layout, Window, Pane, OnStart structs
@@ -45,6 +46,8 @@ tplm/
 │       ├── rename.go            # Bubbletea model: inline rename text input
 │       ├── keys.go              # Key bindings: j/k, Enter, d, r, q/Esc
 │       └── styles.go            # Lipgloss style definitions
+├── go.mod
+├── Makefile
 └── tmux.conf.example            # Recommended keybindings
 ```
 
@@ -100,13 +103,13 @@ layouts:
 
 ```bash
 # Run directly
-go run . picker
+go run ./cmd/tplm picker
 
 # Build binary
-go build -o tplm .
+go build -o tplm ./cmd/tplm
 
 # Install to PATH
-go install .
+go install ./cmd/tplm
 
 # Run tests
 go test ./...

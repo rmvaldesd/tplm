@@ -333,9 +333,29 @@ func (m PickerModel) updateConfirmKill(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Confirm):
 			item := m.selectedItem()
 			if item != nil && item.isSession {
-				if err := tmux.KillSession(item.name); err != nil {
-					m.err = err
+				currentSession, _ := tmux.CurrentSession()
+				isCurrentSession := item.name == currentSession
+
+				if isCurrentSession {
+					neighbor, hasNeighbor := tmux.NeighborSession(item.name)
+					if hasNeighbor {
+						_ = tmux.SwitchClient(neighbor)
+					}
+					if err := tmux.KillSession(item.name); err != nil {
+						m.err = err
+					}
+					if !hasNeighbor {
+						// Last session — quit so picker exits before tmux shuts down.
+						m.quitting = true
+						m.mode = modeNormal
+						return m, tea.Quit
+					}
+				} else {
+					if err := tmux.KillSession(item.name); err != nil {
+						m.err = err
+					}
 				}
+
 				m.refreshItems()
 				if m.cursor >= m.totalItems() && m.cursor > 0 {
 					m.cursor--

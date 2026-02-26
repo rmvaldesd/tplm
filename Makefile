@@ -4,7 +4,7 @@ PREFIX  := /usr/local/bin
 .PHONY: build install uninstall clean test lint
 
 build:
-	go build -o $(BINARY) .
+	go build -o $(BINARY) ./cmd/tplm
 
 install: build
 	install -m 755 $(BINARY) $(PREFIX)/$(BINARY)

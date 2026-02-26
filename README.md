@@ -7,7 +7,7 @@ A Go CLI tool for managing tmux sessions with predefined project layouts. Define
 - **YAML-based config** — define projects, layouts, and startup commands
 - **Floating picker** — Bubbletea TUI inside a `tmux display-popup` for browsing projects and active sessions
 - **Auto session creation** — select a project and tplm creates the session with the configured layout and runs startup commands
-- **Session management** — kill and rename sessions, close individual windows directly from the picker
+- **Session management** — kill and rename sessions, close individual windows directly from the picker (safely switches to a neighbor session when killing the current one)
 - **Scriptable** — `tplm open <name>` for headless session creation
 
 ## Requirements
@@ -137,7 +137,7 @@ Press `prefix + l` inside tmux to open the floating picker:
 | `h` | On a window | Jump to parent session |
 | `Enter` | On a window | Switch to that window |
 | `Enter` | On a project | Create session (if needed) and switch |
-| `d` | On a session | Kill session (with `y/n` confirmation) |
+| `d` | On a session | Kill session (with `y/n` confirmation; safely switches away if current) |
 | `d` | On a window | Kill window (with `y/n` confirmation) |
 | `r` | On a session | Rename session inline |
 | `q` / `Esc` | Anywhere | Close picker |
@@ -481,6 +481,121 @@ projects:
 ```
 
 This creates three windows: `editor` (70/30 split), `servers` (50/50 split), and `logs` (single pane). Each pane can optionally specify a `command` to run on creation — this is an alternative to using `on_start`, and gives you per-pane control rather than per-window.
+
+## Pane Commands
+
+Each pane can run a command automatically when the session is created. There are two ways to do this:
+
+### Option 1: `command` on the pane (per-pane)
+
+Add a `command` field directly to any pane in the layout. The command runs in that specific pane when the session is created.
+
+```yaml
+layouts:
+  dev:
+    windows:
+      - name: editor
+        panes:
+          - size: "70%"
+            command: "nvim ."
+          - split: horizontal
+            size: "30%"
+            command: "git status"
+      - name: services
+        panes:
+          - size: "50%"
+            command: "docker compose up"
+          - split: horizontal
+            size: "50%"
+            command: "make watch"
+      - name: terminal
+        panes:
+          - size: "60%"
+            command: "htop"
+          - split: vertical
+            size: "40%"
+            command: "tail -f /tmp/app.log"
+```
+
+This is the most flexible approach — every pane can have its own startup command regardless of window boundaries.
+
+### Option 2: `on_start` on the project (per-window)
+
+Use the `on_start` field on the project to send a command to the **first pane** of a named window. This is useful when you want to keep the layout definition reusable across projects.
+
+```yaml
+layouts:
+  dev:
+    windows:
+      - name: editor
+        panes:
+          - size: "70%"
+          - split: horizontal
+            size: "30%"
+      - name: server
+        panes:
+          - size: "100%"
+
+projects:
+  - name: my-api
+    path: ~/Projects/my-api
+    layout: dev
+    on_start:
+      - window: editor
+        command: nvim .
+      - window: server
+        command: go run ./cmd/server
+
+  - name: my-frontend
+    path: ~/Projects/my-frontend
+    layout: dev
+    on_start:
+      - window: editor
+        command: nvim .
+      - window: server
+        command: npm run dev
+```
+
+Both projects share the same `dev` layout but run different commands.
+
+### Combining both
+
+You can use both approaches together. Pane-level `command` runs first, then `on_start` sends its command to the window's first pane. In practice, pick one approach per window to avoid conflicts.
+
+```yaml
+layouts:
+  fulldev:
+    windows:
+      - name: code
+        panes:
+          - size: "70%"
+          - split: horizontal
+            size: "30%"
+            command: "git log --oneline -20"   # pane command: right side
+      - name: server
+        panes:
+          - size: "100%"
+
+projects:
+  - name: my-api
+    path: ~/Projects/my-api
+    layout: fulldev
+    on_start:
+      - window: code
+        command: nvim .          # on_start: runs in the first pane (left side)
+      - window: server
+        command: go run .
+```
+
+## Safe Session Kill
+
+When you press `d` to kill a session from the picker:
+
+- **Killing a non-current session** — the session is destroyed and the picker refreshes. No disruption.
+- **Killing the current session (other sessions exist)** — tplm switches your client to the next session (or previous if current is last) before destroying it. You stay in tmux.
+- **Killing the last session** — tplm destroys the session and the picker exits. tmux shuts down and you return to your terminal.
+
+This prevents the scenario where killing your current session would destroy the popup and kick you out of tmux unexpectedly.
 
 ## Session Creation Flow
 
