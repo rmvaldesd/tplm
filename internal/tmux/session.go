@@ -49,5 +49,5 @@ func SelectWindow(target string) error {
 
 // SelectPane selects a specific pane.
 func SelectPane(target string) error {
-	return RunSilent(CmdSelectPane, FlagTarget, fmt.Sprintf("%s.0", target))
+	return RunSilent(CmdSelectPane, FlagTarget, fmt.Sprintf(FmtTargetPane0, target))
 }

@@ -50,4 +50,6 @@ const (
 	OutputCreatedConfig  = "Created starter config at %s\n"
 	OutputAttached       = "*"
 	OutputNotAttached    = " "
+	FmtListProject       = "  %-20s %s\n"
+	FmtListSession       = "  %s %-20s %d windows\n"
 )

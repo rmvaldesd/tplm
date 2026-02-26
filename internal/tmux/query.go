@@ -36,15 +36,15 @@ func ListSessions() ([]SessionInfo, error) {
 	lines := strings.Split(out, "\n")
 	sessions := make([]SessionInfo, 0, len(lines))
 	for _, line := range lines {
-		parts := strings.SplitN(line, "\t", 4)
-		if len(parts) < 4 {
+		parts := strings.SplitN(line, "\t", SessionFieldCount)
+		if len(parts) < SessionFieldCount {
 			continue
 		}
 		wins, err := strconv.Atoi(parts[1])
 		if err != nil {
-			return nil, fmt.Errorf("parsing window count for session %q: %w", parts[0], err)
+			return nil, fmt.Errorf(ErrFmtParseWinCount, parts[0], err)
 		}
-		attached := parts[2] == "1"
+		attached := parts[2] == AttachedValue
 		sessions = append(sessions, SessionInfo{
 			Name:     parts[0],
 			Windows:  wins,
@@ -76,15 +76,15 @@ func ListWindows(session string) ([]WindowInfo, error) {
 	lines := strings.Split(out, "\n")
 	windows := make([]WindowInfo, 0, len(lines))
 	for _, line := range lines {
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) < 3 {
+		parts := strings.SplitN(line, "\t", WindowFieldCount)
+		if len(parts) < WindowFieldCount {
 			continue
 		}
 		idx, err := strconv.Atoi(parts[0])
 		if err != nil {
-			return nil, fmt.Errorf("parsing window index %q: %w", parts[0], err)
+			return nil, fmt.Errorf(ErrFmtParseWinIndex, parts[0], err)
 		}
-		active := parts[2] == "1"
+		active := parts[2] == ActiveValue
 		windows = append(windows, WindowInfo{
 			Index:  idx,
 			Name:   parts[1],

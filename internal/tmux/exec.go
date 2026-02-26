@@ -15,7 +15,7 @@ func Run(args ...string) (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("tmux %s: %s (%w)", strings.Join(args, " "), strings.TrimSpace(stderr.String()), err)
+		return "", fmt.Errorf(ErrFmtRun, strings.Join(args, " "), strings.TrimSpace(stderr.String()), err)
 	}
 	return strings.TrimRight(stdout.String(), "\n"), nil
 }

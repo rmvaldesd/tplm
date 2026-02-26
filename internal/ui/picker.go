@@ -19,6 +19,20 @@ const (
 	modeRename
 )
 
+// Render format strings for picker items.
+const (
+	fmtWindowItem  = "     %s%s%s\n"
+	fmtSessionItem = " %s%s %s %s%s\n"
+	fmtProjectItem = " %s%s  %s\n"
+	fmtWindowInfo  = "%d windows"
+)
+
+// Builder pre-sizing estimates.
+const (
+	builderBytesPerItem = 80
+	builderBaseSize     = 256
+)
+
 // pickerItem represents one row in the picker — a project, session, or window.
 type pickerItem struct {
 	isSession    bool
@@ -222,7 +236,7 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if item.isWindow {
 				// Switch to the specific window.
-				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				target := fmt.Sprintf(tmux.FmtSessionWindow, item.sessionName, item.windowIndex)
 				return m, func() tea.Msg { return switchMsg{name: target} }
 			}
 
@@ -276,7 +290,7 @@ func (m PickerModel) updateNormal(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if item.isWindow {
 				// Switch to the window (same as Enter).
-				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				target := fmt.Sprintf(tmux.FmtSessionWindow, item.sessionName, item.windowIndex)
 				return m, func() tea.Msg { return switchMsg{name: target} }
 			}
 
@@ -363,7 +377,7 @@ func (m PickerModel) updateConfirmKill(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 				}
 			} else if item != nil && item.isWindow {
-				target := fmt.Sprintf("%s:%d", item.sessionName, item.windowIndex)
+				target := fmt.Sprintf(tmux.FmtSessionWindow, item.sessionName, item.windowIndex)
 				if err := tmux.KillWindow(target); err != nil {
 					m.err = err
 				}
@@ -458,7 +472,7 @@ func (m PickerModel) View() string {
 
 	var b strings.Builder
 	// Pre-size the builder: ~80 bytes per item + headers/footers.
-	b.Grow(len(m.displayItems)*80 + 256)
+	b.Grow(len(m.displayItems)*builderBytesPerItem + builderBaseSize)
 	w := m.width
 	if w == 0 {
 		w = DefaultPickerWidth
@@ -559,7 +573,7 @@ func (m PickerModel) renderItem(idx int, item pickerItem, width int) string {
 			indicator = windowActiveIndicator.Render() + " "
 		}
 		name := style.Render(item.name)
-		return fmt.Sprintf("     %s%s%s\n", cursor, indicator, name)
+		return fmt.Sprintf(fmtWindowItem, cursor, indicator, name)
 	}
 
 	if item.isSession {
@@ -571,12 +585,12 @@ func (m PickerModel) renderItem(idx int, item pickerItem, width int) string {
 		name := style.Render(item.name)
 		info := ""
 		if !item.expanded {
-			info = "  " + pathStyle.Render(fmt.Sprintf("%d windows", item.windows))
+			info = "  " + pathStyle.Render(fmt.Sprintf(fmtWindowInfo, item.windows))
 		}
-		return fmt.Sprintf(" %s%s %s %s%s\n", cursor, indicator, chevron, name, info)
+		return fmt.Sprintf(fmtSessionItem, cursor, indicator, chevron, name, info)
 	}
 
 	name := style.Render(item.name)
 	path := pathStyle.Render(item.path)
-	return fmt.Sprintf(" %s%s  %s\n", cursor, name, path)
+	return fmt.Sprintf(fmtProjectItem, cursor, name, path)
 }

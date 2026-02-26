@@ -9,6 +9,11 @@ import (
 	"github.com/rmvaldesd/tplm/internal/config"
 )
 
+const (
+	dirPermissions  = 0o755
+	filePermissions = 0o644
+)
+
 var initCmd = &cobra.Command{
 	Use:   InitUse,
 	Short: InitShort,
@@ -17,7 +22,7 @@ var initCmd = &cobra.Command{
 
 		// Create parent directory.
 		dir := filepath.Dir(path)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, dirPermissions); err != nil {
 			return fmt.Errorf(ErrCreatingDir, err)
 		}
 
@@ -26,7 +31,7 @@ var initCmd = &cobra.Command{
 			return fmt.Errorf(ErrConfigExists, path)
 		}
 
-		if err := os.WriteFile(path, []byte(config.ExampleConfig()), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(config.ExampleConfig()), filePermissions); err != nil {
 			return fmt.Errorf(ErrWritingConfig, err)
 		}
 

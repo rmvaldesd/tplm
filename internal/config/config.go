@@ -10,6 +10,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	homePrefix       = "~/"
+	defaultWindowName = "main"
+	fallbackDir      = "."
+)
+
 // ErrProjectNotFound is returned when a project name is not found in the config.
 var ErrProjectNotFound = errors.New("project not found")
 
@@ -18,7 +24,7 @@ var ErrProjectNotFound = errors.New("project not found")
 func DefaultConfigPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return filepath.Join(".", ConfigDir, ConfigApp, ConfigFile)
+		return filepath.Join(fallbackDir, ConfigDir, ConfigApp, ConfigFile)
 	}
 	return filepath.Join(home, ConfigDir, ConfigApp, ConfigFile)
 }
@@ -66,12 +72,12 @@ func (c *Config) GetLayout(proj *Project) Layout {
 	}
 	// Default: single window named "main" with one pane.
 	return Layout{
-		Windows: []Window{{Name: "main"}},
+		Windows: []Window{{Name: defaultWindowName}},
 	}
 }
 
 func expandHome(path, home string) string {
-	if strings.HasPrefix(path, "~/") {
+	if strings.HasPrefix(path, homePrefix) {
 		return filepath.Join(home, path[2:])
 	}
 	return path

@@ -13,7 +13,7 @@ var listCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println(OutputProjects)
 		for _, p := range cfg.Projects {
-			fmt.Printf("  %-20s %s\n", p.Name, p.Path)
+			fmt.Printf(FmtListProject, p.Name, p.Path)
 		}
 
 		sessions, err := tmux.ListSessions()
@@ -31,7 +31,7 @@ var listCmd = &cobra.Command{
 			if s.Attached {
 				attached = OutputAttached
 			}
-			fmt.Printf("  %s %-20s %d windows\n", attached, s.Name, s.Windows)
+			fmt.Printf(FmtListSession, attached, s.Name, s.Windows)
 		}
 
 		return nil
