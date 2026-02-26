@@ -130,6 +130,10 @@ Keybindings are added to `~/.tmux.conf` by the user (not auto-applied). The `tmu
 bind-key C-p display-popup -E -w 80% -h 60% "tplm picker"
 ```
 
+## Skills
+
+**Always use the `golang-patterns` and `golang-pro` skills** when writing, reviewing, or modifying Go code in this project. Invoke them before making implementation decisions to ensure idiomatic patterns, proper concurrency handling, and best practices are followed.
+
 ## Code Conventions
 
 ### Constants — No Inline Literals
