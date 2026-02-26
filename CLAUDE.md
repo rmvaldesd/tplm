@@ -130,6 +130,35 @@ Keybindings are added to `~/.tmux.conf` by the user (not auto-applied). The `tmu
 bind-key C-p display-popup -E -w 80% -h 60% "tplm picker"
 ```
 
+## Code Conventions
+
+### Constants — No Inline Literals
+
+**Never use string literals, numeric literals, or format strings directly in code.** All literals must be extracted into named constants:
+
+- **File-local constants**: If a constant is only used within a single file, declare it in a `const` block just below the imports at the top of that file.
+- **Package-level constants**: If a constant is used across multiple files in the same package, place it in the package's `constants.go` file (e.g., `internal/tmux/constants.go`, `internal/cli/constants.go`, `internal/config/constants.go`, `internal/ui/constants.go`).
+
+This applies to:
+- Error message templates (e.g., `ErrFmtRenameWindow = "renaming window %q: %w"`)
+- Format strings (e.g., `FmtSessionWindow = "%s:%d"`)
+- User-facing messages and output strings
+- Numeric values like file permissions, sizing estimates, field counts
+- tmux command names, flags, and format strings (already in `tmux/constants.go`)
+
+### Error Handling
+
+- **Never ignore errors silently** — always handle or propagate errors from `os.UserHomeDir()`, `strconv.Atoi()`, and similar calls. If an error is intentionally ignored (e.g., cosmetic tmux focus operations), add a comment explaining why.
+- **Use `fmt.Errorf` with `%w`** for error wrapping, always referencing a constant template.
+- **Define sentinel errors** (`var ErrFoo = errors.New(...)`) for domain-specific error cases that callers may need to check with `errors.Is`.
+
+### Go Idioms
+
+- **Preallocate slices** when the size is known: use `make([]T, 0, len(source))` instead of `var s []T`.
+- **Use `strings.Builder`** with `b.Grow()` for building strings with known approximate size.
+- **Add doc comments** to all exported functions, types, and package-level variables.
+- **Write table-driven tests** with subtests (`t.Run`) for all non-trivial logic.
+
 ## Dependencies
 
 - `tmux` >= 3.2 (for `display-popup` support)
