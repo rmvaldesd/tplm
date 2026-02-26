@@ -1,16 +1,21 @@
 package tmux
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
 
+// ErrTmuxNoServer indicates the tmux server is not running.
+var ErrTmuxNoServer = errors.New("tmux: no server running")
+
 // SessionInfo holds metadata about a tmux session.
 type SessionInfo struct {
-	Name       string
-	Windows    int
-	Attached   bool
-	Path       string
+	Name     string
+	Windows  int
+	Attached bool
+	Path     string
 }
 
 // ListSessions returns all active tmux sessions.
@@ -28,13 +33,17 @@ func ListSessions() ([]SessionInfo, error) {
 		return nil, nil
 	}
 
-	var sessions []SessionInfo
-	for _, line := range strings.Split(out, "\n") {
+	lines := strings.Split(out, "\n")
+	sessions := make([]SessionInfo, 0, len(lines))
+	for _, line := range lines {
 		parts := strings.SplitN(line, "\t", 4)
 		if len(parts) < 4 {
 			continue
 		}
-		wins, _ := strconv.Atoi(parts[1])
+		wins, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, fmt.Errorf("parsing window count for session %q: %w", parts[0], err)
+		}
 		attached := parts[2] == "1"
 		sessions = append(sessions, SessionInfo{
 			Name:     parts[0],
@@ -64,13 +73,17 @@ func ListWindows(session string) ([]WindowInfo, error) {
 		return nil, nil
 	}
 
-	var windows []WindowInfo
-	for _, line := range strings.Split(out, "\n") {
+	lines := strings.Split(out, "\n")
+	windows := make([]WindowInfo, 0, len(lines))
+	for _, line := range lines {
 		parts := strings.SplitN(line, "\t", 3)
 		if len(parts) < 3 {
 			continue
 		}
-		idx, _ := strconv.Atoi(parts[0])
+		idx, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("parsing window index %q: %w", parts[0], err)
+		}
 		active := parts[2] == "1"
 		windows = append(windows, WindowInfo{
 			Index:  idx,

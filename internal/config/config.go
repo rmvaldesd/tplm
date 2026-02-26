@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,9 +10,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ErrProjectNotFound is returned when a project name is not found in the config.
+var ErrProjectNotFound = errors.New("project not found")
+
 // DefaultConfigPath returns ~/.config/tplm/config.yaml.
+// If the home directory cannot be determined, it falls back to a relative path.
 func DefaultConfigPath() string {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(".", ConfigDir, ConfigApp, ConfigFile)
+	}
 	return filepath.Join(home, ConfigDir, ConfigApp, ConfigFile)
 }
 
@@ -28,7 +36,10 @@ func Load(path string) (*Config, error) {
 	}
 
 	// Resolve ~ in project paths.
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return &cfg, nil
+	}
 	for i := range cfg.Projects {
 		cfg.Projects[i].Path = expandHome(cfg.Projects[i].Path, home)
 	}

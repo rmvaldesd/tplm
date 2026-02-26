@@ -67,11 +67,13 @@ func ApplyLayout(sessionName string, layout config.Layout, projectPath string) e
 			}
 		}
 
-		// Select the first pane after all splits.
+		// Select the first pane after all splits. Safe to ignore: cosmetic
+		// focus operation — the layout is already applied at this point.
 		_ = SelectPane(target)
 	}
 
-	// Select the first window.
+	// Select the first window. Safe to ignore: cosmetic focus operation
+	// — all windows and panes are already created.
 	_ = SelectWindow(fmt.Sprintf("%s:0", sessionName))
 	return nil
 }

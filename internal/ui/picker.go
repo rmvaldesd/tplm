@@ -75,7 +75,7 @@ func NewPicker(cfg *config.Config) PickerModel {
 }
 
 func (m *PickerModel) refreshItems() {
-	m.projects = nil
+	m.projects = make([]pickerItem, 0, len(m.cfg.Projects))
 	for _, p := range m.cfg.Projects {
 		m.projects = append(m.projects, pickerItem{
 			name: p.Name,
@@ -83,8 +83,8 @@ func (m *PickerModel) refreshItems() {
 		})
 	}
 
-	m.sessions = nil
 	sessions, _ := tmux.ListSessions()
+	m.sessions = make([]pickerItem, 0, len(sessions))
 	for _, s := range sessions {
 		_, isExpanded := m.expanded[s.Name]
 		m.sessions = append(m.sessions, pickerItem{
@@ -111,7 +111,7 @@ func (m *PickerModel) refreshItems() {
 }
 
 func (m *PickerModel) rebuildDisplayItems() {
-	m.displayItems = nil
+	m.displayItems = make([]pickerItem, 0, len(m.projects)+len(m.sessions)+len(m.expanded))
 
 	for _, item := range m.projects {
 		m.displayItems = append(m.displayItems, item)
@@ -146,10 +146,12 @@ func (m PickerModel) selectedItem() *pickerItem {
 	return &m.displayItems[m.cursor]
 }
 
+// Init implements tea.Model. It requests the initial window size.
 func (m PickerModel) Init() tea.Cmd {
 	return tea.WindowSize()
 }
 
+// Update implements tea.Model. It handles messages for all picker modes.
 func (m PickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -448,12 +450,15 @@ func (m *PickerModel) createSession(proj *config.Project) error {
 	return nil
 }
 
+// View implements tea.Model. It renders the picker with projects, sessions, and mode-specific footer.
 func (m PickerModel) View() string {
 	if m.quitting {
 		return ""
 	}
 
 	var b strings.Builder
+	// Pre-size the builder: ~80 bytes per item + headers/footers.
+	b.Grow(len(m.displayItems)*80 + 256)
 	w := m.width
 	if w == 0 {
 		w = DefaultPickerWidth

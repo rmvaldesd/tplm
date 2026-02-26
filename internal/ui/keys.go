@@ -15,6 +15,7 @@ type keyMap struct {
 	Quit    key.Binding
 }
 
+// keys defines the default key bindings for the picker.
 var keys = keyMap{
 	Up: key.NewBinding(
 		key.WithKeys("up", "k"),

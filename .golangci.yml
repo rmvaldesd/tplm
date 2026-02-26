@@ -1,0 +1,23 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - ineffassign
+    - misspell
+    - gosimple
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  errcheck:
+    check-blank: false
+  goimports:
+    local-prefixes: github.com/rmvaldesd/tplm
+
+issues:
+  exclude-use-default: true
