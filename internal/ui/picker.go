@@ -456,18 +456,18 @@ func (m PickerModel) View() string {
 	var b strings.Builder
 	w := m.width
 	if w == 0 {
-		w = 60
+		w = DefaultPickerWidth
 	}
 
 	// Title bar.
-	title := titleStyle.Render("tplm")
-	hint := pathStyle.Render("d:kill  r:rename")
+	title := titleStyle.Render(TitleText)
+	hint := pathStyle.Render(HintText)
 	gap := w - lipgloss.Width(title) - lipgloss.Width(hint)
 	if gap < 1 {
 		gap = 1
 	}
 	b.WriteString(title + strings.Repeat(" ", gap) + hint + "\n")
-	b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+	b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
 
 	// Render using displayItems with section headers.
 	inSessions := false
@@ -476,22 +476,22 @@ func (m PickerModel) View() string {
 	for i, item := range m.displayItems {
 		// Insert Projects header before first project.
 		if !projectsRendered && !item.isSession && !item.isWindow {
-			b.WriteString(headerStyle.Render("Projects") + "\n")
-			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+			b.WriteString(headerStyle.Render(HeaderProjects) + "\n")
+			b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
 			projectsRendered = true
 		}
 
 		// Insert Sessions header at the boundary.
 		if !inSessions && (item.isSession || item.isWindow) {
 			if !projectsRendered {
-				b.WriteString(headerStyle.Render("Projects") + "\n")
-				b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-				b.WriteString(normalStyle.Render("(no projects configured)") + "\n")
+				b.WriteString(headerStyle.Render(HeaderProjects) + "\n")
+				b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
+				b.WriteString(normalStyle.Render(MsgNoProjects) + "\n")
 				projectsRendered = true
 			}
-			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-			b.WriteString(headerStyle.Render("Active Sessions") + "\n")
-			b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
+			b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
+			b.WriteString(headerStyle.Render(HeaderSessions) + "\n")
+			b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
 			inSessions = true
 		}
 
@@ -500,16 +500,16 @@ func (m PickerModel) View() string {
 
 	// Handle empty states.
 	if !projectsRendered {
-		b.WriteString(headerStyle.Render("Projects") + "\n")
-		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-		b.WriteString(normalStyle.Render("(no projects configured)") + "\n")
+		b.WriteString(headerStyle.Render(HeaderProjects) + "\n")
+		b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
+		b.WriteString(normalStyle.Render(MsgNoProjects) + "\n")
 	}
 
 	if !inSessions {
-		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-		b.WriteString(headerStyle.Render("Active Sessions") + "\n")
-		b.WriteString(separatorStyle.Render(strings.Repeat("─", w)) + "\n")
-		b.WriteString(normalStyle.Render("(no active sessions)") + "\n")
+		b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
+		b.WriteString(headerStyle.Render(HeaderSessions) + "\n")
+		b.WriteString(separatorStyle.Render(strings.Repeat(SymbolSeparator, w)) + "\n")
+		b.WriteString(normalStyle.Render(MsgNoSessions) + "\n")
 	}
 
 	// Mode-specific footer.
@@ -518,38 +518,38 @@ func (m PickerModel) View() string {
 		item := m.selectedItem()
 		if item != nil {
 			b.WriteString("\n")
-			kind := "session"
+			kind := MsgSession
 			if item.isWindow {
-				kind = "window"
+				kind = MsgWindow
 			}
-			b.WriteString(confirmStyle.Render(fmt.Sprintf("  Kill %s %q? (y/n)", kind, item.name)) + "\n")
+			b.WriteString(confirmStyle.Render(fmt.Sprintf(MsgConfirmKill, kind, item.name)) + "\n")
 		}
 	case modeRename:
 		b.WriteString("\n")
 		b.WriteString(m.rename.View() + "\n")
 	default:
 		b.WriteString("\n")
-		b.WriteString(helpStyle.Render("hjkl navigate  ⏎ select  d kill  r rename  q quit") + "\n")
+		b.WriteString(helpStyle.Render(MsgHelpBar) + "\n")
 	}
 
 	if m.err != nil {
 		b.WriteString("\n")
-		b.WriteString(confirmStyle.Render(fmt.Sprintf("  Error: %v", m.err)) + "\n")
+		b.WriteString(confirmStyle.Render(fmt.Sprintf(MsgError, m.err)) + "\n")
 	}
 
 	return b.String()
 }
 
 func (m PickerModel) renderItem(idx int, item pickerItem, width int) string {
-	cursor := "  "
+	cursor := SymbolNoCursor
 	style := normalStyle
 	if idx == m.cursor {
-		cursor = "> "
+		cursor = SymbolCursor
 		style = selectedStyle
 	}
 
 	if item.isWindow {
-		indicator := "  "
+		indicator := SymbolNoCursor
 		if item.windowActive {
 			indicator = windowActiveIndicator.Render() + " "
 		}
@@ -558,9 +558,9 @@ func (m PickerModel) renderItem(idx int, item pickerItem, width int) string {
 	}
 
 	if item.isSession {
-		chevron := "▶"
+		chevron := SymbolChevronRight
 		if item.expanded {
-			chevron = "▼"
+			chevron = SymbolChevronDown
 		}
 		indicator := activeIndicator.Render()
 		name := style.Render(item.name)

@@ -10,27 +10,27 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Generate a starter config file",
+	Use:   InitUse,
+	Short: InitShort,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := cfgPath
 
 		// Create parent directory.
 		dir := filepath.Dir(path)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("creating config directory: %w", err)
+			return fmt.Errorf(ErrCreatingDir, err)
 		}
 
 		// Don't overwrite existing config.
 		if _, err := os.Stat(path); err == nil {
-			return fmt.Errorf("config already exists at %s", path)
+			return fmt.Errorf(ErrConfigExists, path)
 		}
 
 		if err := os.WriteFile(path, []byte(config.ExampleConfig()), 0o644); err != nil {
-			return fmt.Errorf("writing config: %w", err)
+			return fmt.Errorf(ErrWritingConfig, err)
 		}
 
-		fmt.Printf("Created starter config at %s\n", path)
+		fmt.Printf(OutputCreatedConfig, path)
 		return nil
 	},
 }

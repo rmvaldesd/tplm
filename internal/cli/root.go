@@ -14,26 +14,26 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tplm",
-	Short: "tmux Project Layout Manager",
-	Long:  "A tool for managing tmux sessions with predefined project layouts.",
+	Use:   RootUse,
+	Short: RootShort,
+	Long:  RootLong,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip config loading for init command.
-		if cmd.Name() == "init" {
+		if cmd.Name() == CmdInit {
 			return nil
 		}
 
 		var err error
 		cfg, err = config.Load(cfgPath)
 		if err != nil {
-			return fmt.Errorf("loading config: %w\nRun 'tplm init' to create a starter config", err)
+			return fmt.Errorf(ErrLoadingConfig, err)
 		}
 		return nil
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgPath, "config", config.DefaultConfigPath(), "path to config file")
+	rootCmd.PersistentFlags().StringVar(&cfgPath, FlagConfig, config.DefaultConfigPath(), FlagConfigDesc)
 }
 
 func Execute() {

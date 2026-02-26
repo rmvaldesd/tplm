@@ -8,10 +8,10 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Print projects and active tmux sessions",
+	Use:   ListUse,
+	Short: ListShort,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Projects:")
+		fmt.Println(OutputProjects)
 		for _, p := range cfg.Projects {
 			fmt.Printf("  %-20s %s\n", p.Name, p.Path)
 		}
@@ -22,14 +22,14 @@ var listCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		fmt.Println("Active Sessions:")
+		fmt.Println(OutputActiveSessions)
 		if len(sessions) == 0 {
-			fmt.Println("  (none)")
+			fmt.Println(OutputNone)
 		}
 		for _, s := range sessions {
-			attached := " "
+			attached := OutputNotAttached
 			if s.Attached {
-				attached = "*"
+				attached = OutputAttached
 			}
 			fmt.Printf("  %s %-20s %d windows\n", attached, s.Name, s.Windows)
 		}

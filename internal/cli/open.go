@@ -9,15 +9,15 @@ import (
 )
 
 var openCmd = &cobra.Command{
-	Use:   "open <project-name>",
-	Short: "Create a session from project config and switch to it",
+	Use:   OpenUse,
+	Short: OpenShort,
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
 		proj := cfg.FindProject(name)
 		if proj == nil {
-			return fmt.Errorf("project %q not found in config", name)
+			return fmt.Errorf(ErrProjectNotFound, name)
 		}
 
 		return OpenProject(proj)
@@ -35,18 +35,18 @@ func OpenProject(proj *config.Project) error {
 	}
 
 	if err := tmux.NewSession(proj.Name, proj.Path); err != nil {
-		return fmt.Errorf("creating session: %w", err)
+		return fmt.Errorf(ErrCreatingSession, err)
 	}
 
 	layout := cfg.GetLayout(proj)
 
 	if err := tmux.ApplyLayout(proj.Name, layout, proj.Path); err != nil {
-		return fmt.Errorf("applying layout: %w", err)
+		return fmt.Errorf(ErrApplyingLayout, err)
 	}
 
 	if len(proj.OnStart) > 0 {
 		if err := tmux.RunOnStart(proj.Name, layout, proj.OnStart); err != nil {
-			return fmt.Errorf("running on_start: %w", err)
+			return fmt.Errorf(ErrRunningOnStart, err)
 		}
 	}
 

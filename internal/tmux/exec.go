@@ -9,7 +9,7 @@ import (
 
 // Run executes a tmux command and returns its stdout.
 func Run(args ...string) (string, error) {
-	cmd := exec.Command("tmux", args...)
+	cmd := exec.Command(TmuxBin, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -15,10 +15,10 @@ type SessionInfo struct {
 
 // ListSessions returns all active tmux sessions.
 func ListSessions() ([]SessionInfo, error) {
-	out, err := Run("list-sessions", "-F", "#{session_name}\t#{session_windows}\t#{session_attached}\t#{session_path}")
+	out, err := Run(CmdListSessions, FlagFormat, SessionListFormat)
 	if err != nil {
 		// No server running means no sessions.
-		if strings.Contains(err.Error(), "no server") || strings.Contains(err.Error(), "no current") {
+		if strings.Contains(err.Error(), ErrNoServer) || strings.Contains(err.Error(), ErrNoCurrent) {
 			return nil, nil
 		}
 		return nil, err
@@ -55,7 +55,7 @@ type WindowInfo struct {
 
 // ListWindows returns all windows for the given session.
 func ListWindows(session string) ([]WindowInfo, error) {
-	out, err := Run("list-windows", "-t", session, "-F", "#{window_index}\t#{window_name}\t#{window_active}")
+	out, err := Run(CmdListWindows, FlagTarget, session, FlagFormat, WindowListFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func ListWindows(session string) ([]WindowInfo, error) {
 
 // CurrentSession returns the name of the session the current client is attached to.
 func CurrentSession() (string, error) {
-	out, err := Run("display-message", "-p", "#{session_name}")
+	out, err := Run(CmdDisplayMessage, FlagPrint, SessionNameFormat)
 	if err != nil {
 		return "", err
 	}
@@ -113,6 +113,6 @@ func NeighborSession(current string) (string, bool) {
 
 // SessionExists checks if a session with the given name exists.
 func SessionExists(name string) bool {
-	err := RunSilent("has-session", "-t", name)
+	err := RunSilent(CmdHasSession, FlagTarget, name)
 	return err == nil
 }

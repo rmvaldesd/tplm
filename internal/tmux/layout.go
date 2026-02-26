@@ -38,21 +38,21 @@ func ApplyLayout(sessionName string, layout config.Layout, projectPath string) e
 		// Split panes (skip the first pane — it exists by default).
 		for j := 1; j < len(win.Panes); j++ {
 			pane := win.Panes[j]
-			args := []string{"split-window", "-t", target}
+			args := []string{CmdSplitWindow, FlagTarget, target}
 
 			// Default to horizontal split (side-by-side).
-			if pane.Split == "vertical" {
-				args = append(args, "-v")
+			if pane.Split == SplitVertical {
+				args = append(args, FlagVertical)
 			} else {
-				args = append(args, "-h")
+				args = append(args, FlagHoriz)
 			}
 
 			if pane.Size != "" {
 				pct := strings.TrimSuffix(pane.Size, "%")
-				args = append(args, "-p", pct)
+				args = append(args, FlagPrint, pct)
 			}
 
-			args = append(args, "-c", projectPath)
+			args = append(args, FlagDir, projectPath)
 
 			if err := RunSilent(args...); err != nil {
 				return fmt.Errorf("splitting pane %d in window %q: %w", j, win.Name, err)

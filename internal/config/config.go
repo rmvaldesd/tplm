@@ -12,19 +12,19 @@ import (
 // DefaultConfigPath returns ~/.config/tplm/config.yaml.
 func DefaultConfigPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "tplm", "config.yaml")
+	return filepath.Join(home, ConfigDir, ConfigApp, ConfigFile)
 }
 
 // Load reads and parses the YAML config file at the given path.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading config: %w", err)
+		return nil, fmt.Errorf(ErrReadingConfig, err)
 	}
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config: %w", err)
+		return nil, fmt.Errorf(ErrParsingConfig, err)
 	}
 
 	// Resolve ~ in project paths.

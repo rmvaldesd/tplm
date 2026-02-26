@@ -25,9 +25,9 @@ func NewRenameModel(currentName string) RenameModel {
 	ti := textinput.New()
 	ti.SetValue(currentName)
 	ti.Focus()
-	ti.CharLimit = 64
-	ti.Width = 40
-	ti.Prompt = "Rename: "
+	ti.CharLimit = RenameCharLimit
+	ti.Width = RenameWidth
+	ti.Prompt = RenamePrompt
 	ti.PromptStyle = inputPromptStyle
 
 	return RenameModel{
@@ -44,7 +44,7 @@ func (m RenameModel) Update(msg tea.Msg) (RenameModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "enter":
+		case KeyEnter:
 			newName := m.input.Value()
 			if newName != "" && newName != m.oldName {
 				return m, func() tea.Msg {
@@ -52,7 +52,7 @@ func (m RenameModel) Update(msg tea.Msg) (RenameModel, tea.Cmd) {
 				}
 			}
 			return m, func() tea.Msg { return renameCancelMsg{} }
-		case "esc":
+		case KeyEsc:
 			return m, func() tea.Msg { return renameCancelMsg{} }
 		}
 	}
